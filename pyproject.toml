@@ -2,7 +2,6 @@
 name = "alterx"
 version = "0.0.0"
 description = ""
-readme = "README.md"
 authors = [
     {name = "Jet-Logic"},
 ]

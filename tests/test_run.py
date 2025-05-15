@@ -166,6 +166,27 @@ def process(doc, stat, app):
             else:
                 self.assertEqual(st, etc)
 
+    def test_extension_from_stdin(self):
+        script = self.test_dir.joinpath("run.sh")
+        script.write_text(
+            rf"""
+python -B -m alterx.xml -m -x - {self.test_dir} << 'EOF'
+def process(doc, stat, app):
+    for x in doc.iter('name'):
+        x.text = '@'
+        return True
+EOF
+        """.strip()
+        )
+        print(script.read_text())
+        self.exec(f"sh {script}".split())
+        for filename, content, etc in self.xml_samples:
+            st = self._get_file_stats(etc["path"])
+            if st["path"].name in ("test4.xml",):
+                self.assertNotEqual(st, etc)
+            else:
+                self.assertEqual(st, etc)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -253,31 +253,6 @@ def load_extension(extension_path: str):
     return module
 
 
-def run_extension_function(extension_path, function_name, *args, **kwargs):
-    """
-    Load an extension and run a specific function from it.
-
-    Args:
-        extension_path (str): Path to the Python script
-        function_name (str): Name of function to call
-        *args, **kwargs: Arguments to pass to the function
-
-    Returns:
-        The return value of the called function
-    """
-    module = load_extension(extension_path)
-
-    if not hasattr(module, function_name):
-        available = [name for name in dir(module) if not name.startswith("_")]
-        raise AttributeError(
-            f"Extension {extension_path} has no function '{function_name}'. "
-            f"Available functions: {', '.join(available)}"
-        )
-
-    func = getattr(module, function_name)
-    return func(*args, **kwargs)
-
-
 def load_stdin_as_module():
     """
     Load Python code from stdin as a module with a unique name.
