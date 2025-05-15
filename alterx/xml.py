@@ -6,7 +6,7 @@ from .main import flag
 
 class AlterXMl(App):
 
-    pretty: bool = flag("pretty", "Save pretty formated", default=None)
+    save_pretty: bool = flag("pretty", "Save pretty formated", default=None)
     is_lxml = False
     tag = "XML"
 
@@ -47,11 +47,6 @@ class AlterXMl(App):
         #     kwargs["strip_cdata"] = app.stripCDatas
         parser = etree.XMLParser(**kwargs)
         return etree.parse(open(src, "rb"), parser)
-
-    def hash_of(self, doc):
-        h = HashSink()
-        doc.write(h)
-        return h.digest.hexdigest()
 
     def dump(self, doc: object, out: object, encoding: str):
         doc.write(

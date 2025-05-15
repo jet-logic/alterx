@@ -1,3 +1,4 @@
+import os
 from shutil import rmtree
 import unittest
 import tempfile
@@ -6,30 +7,44 @@ from pathlib import Path
 
 
 class Test1(unittest.TestCase):
+
+    def _get_file_stats(self, f: Path):
+        assert f.exists()
+        stats = f.stat()
+        return {
+            "size": stats.st_size,
+            "mtime": stats.st_mtime,
+            "ctime": stats.st_ctime,
+            "path": f,
+        }
+
     def setUp(self):
         # Create a temporary directory with test files
         self.test_dir = Path(tempfile.mkdtemp())
         xml_samples = [
-            ("test1.xml", "<data><id>1</id><value>X7f3n</value></data>"),
-            ("test2.xml", "<items><a>q92L</a><b>k5TpP</b><c>true</c></items>"),
-            ("test3.xml", '<root><x id="1">A1B</x><y id="2">C3D</y></root>'),
+            ("test1.xml", "<data><id>1</id><value>X7f3n</value></data>", {}),
+            ("test2.xml", "<items><a>q92L</a><b>k5TpP</b><c>true</c></items>", {}),
+            ("test3.xml", '<root><x id="1">A1B</x><y id="2">C3D</y></root>', {}),
             (
                 "test4.xml",
                 "<test><name>sample</name><count>42</count><valid>yes</valid></test>",
+                {},
             ),
             (
                 "test5.xml",
                 "<config><setting>on</setting><timeout>30</timeout></config>",
+                {},
             ),
         ]
-        for filename, content in xml_samples:
-            self.test_dir.joinpath(filename).write_text(content)
+        for filename, content, stat in xml_samples:
+            f = self.test_dir.joinpath(filename)
+            f.write_text(content)
+            stat.update(self._get_file_stats(f))
+        self.xml_samples = xml_samples
 
     def tearDown(self):
         for item in self.test_dir.glob("*"):
             item.unlink()
-        # d = self.test_dir.joinpath(    '__pycache__')
-
         rmtree(self.test_dir)
         pass
 
@@ -39,11 +54,6 @@ class Test1(unittest.TestCase):
             args,
             capture_output=True,
             text=True,
-            # check=True,
-            # stderr=subprocess.STDOUT,
-            # stdin=subprocess.PIPE,
-            # stdout=subprocess.PIPE,
-            # stderr=subprocess.STDOUT,  # Merge stderr into stdout
         )
         o = result.stdout + result.stderr
         print(o)
@@ -71,6 +81,90 @@ def end(app):
         self.assertRegex(output, r"\s+END\sTrue\s+")
         for i in range(5):
             self.assertRegex(output, rf"\s+DATA\s+[^\n]+\Wtest{i+1}\.xml\n")
+        for filename, content, etc in self.xml_samples:
+            st = self._get_file_stats(etc["path"])
+            self.assertEqual(st, etc)
+
+    def test_hash_modification(self):
+        ext1 = self.test_dir.joinpath("ext1.py")
+        ext1.write_text(
+            r"""
+def process(doc, stat, app):
+    for x in doc.iter('setting'):
+        x.text = 'off'
+        """.strip()
+        )
+        output = self.exec(
+            f"python -B -m alterx.xml -mm -x {ext1} {self.test_dir}".split()
+        )
+        for filename, content, etc in self.xml_samples:
+            st = self._get_file_stats(etc["path"])
+            if "test5.xml" == st["path"].name:
+                self.assertNotEqual(st, etc)
+                self.assertNotEqual(
+                    st["path"].read_text(),
+                    "<config><setting>off</setting><timeout>30</timeout></config>",
+                )
+
+            else:
+                self.assertEqual(st, etc)
+
+    def test_output_to_stdout_or_file(self):
+        ext1 = self.test_dir.joinpath("ext1.py")
+        ext1.write_text(
+            r"""
+def process(doc, stat, app):
+    for x in doc.iter('x'):
+        x.set("id", str(int(x.get("id"))+4) )
+        """.strip()
+        )
+        output = self.exec(
+            f"python -B -m alterx.xml -mm -o - -x {ext1} {self.test_dir/'test3.xml'}".split()
+        )
+        self.assertIn('<root><x id="5">A1B</x><y id="2">C3D</y></root>', output)
+
+        ext2 = self.test_dir.joinpath("ext2.py")
+        ext2.write_text(
+            r"""
+def process(doc, stat, app):
+    for x in doc.iter():
+        x.text = "@"
+        """.strip()
+        )
+        output = self.exec(
+            f"python -B -m alterx.xml -mm -o {self.test_dir/'test6.xml'} -x {ext2} {self.test_dir/'test1.xml'}".split()
+        )
+
+        for filename, content, etc in self.xml_samples:
+            st = self._get_file_stats(etc["path"])
+            self.assertEqual(st, etc)
+        self.assertIn(
+            "<data>@<id>@</id><value>@</value></data>",
+            (self.test_dir / "test6.xml").read_text(),
+        )
+
+    def test_extension_modification(self):
+        ext1 = self.test_dir.joinpath("ext1.py")
+        ext1.write_text(
+            r"""
+def process(doc, stat, app):
+    for x in doc.iter('name'):
+        x.text = '@'
+        return True
+    for x in doc.iter('c'):
+        x.text = 'true'
+        return True
+        """.strip()
+        )
+        output = self.exec(
+            f"python -B -m alterx.xml -m -x {ext1} {self.test_dir}".split()
+        )
+        for filename, content, etc in self.xml_samples:
+            st = self._get_file_stats(etc["path"])
+            if st["path"].name in ("test2.xml", "test4.xml"):
+                self.assertNotEqual(st, etc)
+            else:
+                self.assertEqual(st, etc)
 
 
 if __name__ == "__main__":

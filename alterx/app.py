@@ -22,7 +22,7 @@ class App(ScanTree):
     def __init__(self) -> None:
         self._entry_filters = []
         self.defs: dict[str, str] = {}
-        self.dry_run: bool | None = None
+        self.dry_run: bool | None = False
         self.includes = []
         self.excludes = []
         self.modex = []
@@ -156,6 +156,11 @@ class App(ScanTree):
         from sys import stdout
 
         return SinkRaw(stdout.buffer, encoding)
+
+    def hash_of(self, doc):
+        h = HashSink()
+        doc.write(h)
+        return h.digest.hexdigest()
 
 
 class Counter:
