@@ -7,24 +7,36 @@ from .main import flag
 class AlterXMl(App):
 
     save_pretty: bool = flag("pretty", "Save pretty formated", default=None)
-    is_lxml = False
+    use_lxml: bool = flag("lxml", "Use lxml", default=None)
     tag = "XML"
 
     def _get_etree(self):
+        if self.use_lxml is True:
+            from lxml import etree
+
+            return etree
+        elif self.use_lxml is False:
+            import xml.etree.ElementTree as etree
+
+            return etree
         try:
             from lxml import etree
 
-            self.is_lxml = True
+            self.use_lxml = True
 
             return etree
         except ImportError:
             try:  # Normal ElementTree install
                 import xml.etree.ElementTree as etree
 
-                self.is_lxml = False
+                self.use_lxml = False
                 return etree
             except ImportError:
                 logging.exception("Failed to import ElementTree from any known place")
+
+    def ready(self) -> None:
+
+        return super().ready()
 
     def start(self):
 
@@ -49,9 +61,11 @@ class AlterXMl(App):
         return etree.parse(open(src, "rb"), parser)
 
     def dump(self, doc: object, out: object, encoding: str):
-        doc.write(
-            out, xml_declaration=True, encoding=encoding, pretty_print=self.save_pretty
-        )
+        kwargs = {}
+        if self.use_lxml:
+            kwargs["pretty_print"] = self.save_pretty
+
+        doc.write(out, xml_declaration=True, encoding=encoding, **kwargs)
         # encoding="us-ascii", xml_declaration=None, default_namespace=None, method="xml"
 
     def check_accept(self, x):
