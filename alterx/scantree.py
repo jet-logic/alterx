@@ -170,7 +170,6 @@ def globre(pat):
         else:
             add(escape(c))
     assert i == n
-    # print([x for x in res])
 
     # Deal with STARs.
     inp = res
@@ -211,8 +210,4 @@ def globre(pat):
             add(f"{PAT}{fixed}")
     assert i == n
     res = "".join(res)
-    # print(pat, rf"(?s:{res})\Z")
     return rf"(?s:{res})\Z"
-
-
-# print(globre("**/*.dll"))

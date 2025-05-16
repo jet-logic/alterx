@@ -2,7 +2,7 @@ from importlib import import_module
 from logging import info
 from os.path import abspath
 import logging
-from alterx.main import flag
+from .main import flag
 from .scantree import ScanTree
 from .utils import HashSink, SinkRaw
 
@@ -18,6 +18,7 @@ class App(ScanTree):
     fn_start = "start"
     fn_end = "end"
     tag = "APP"
+    default_re_includes = []
 
     def __init__(self) -> None:
         self._entry_filters = []
@@ -43,7 +44,12 @@ class App(ScanTree):
         return super().ready()
 
     def start(self):
-        # print("variables", self.variables)
+        if not self.includes:
+            from re import compile
+
+            for x in self.default_re_includes:
+                self.includes.append(compile(x))
+
         if self.variables:
             for e in self.variables:
                 k, s, v = e.partition("=")
@@ -71,15 +77,21 @@ class App(ScanTree):
                 fn_init = self.fn_init
                 if fn_init:
                     hasattr(mo, fn_init) and getattr(mo, fn_init)(self)
+
         fn_start = self.fn_start
         if fn_start:
             for x in self.modex:
                 hasattr(x, fn_start) and getattr(x, fn_start)(self)
+
         super().start()
+
         fn_end = self.fn_end
         if fn_end:
             for x in self.modex:
                 hasattr(x, fn_end) and getattr(x, fn_end)(self)
+
+    def check_accept(self, x):
+        return super().check_accept(x) and x.is_file()
 
     def sink_file(self, src, encoding=None):
         return open(src, "wb", encoding=None)
