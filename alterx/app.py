@@ -1,13 +1,12 @@
 from importlib import import_module
-from logging import info
+from logging import info, warning, exception
 from os.path import abspath
-import logging
 from .main import flag
-from .scantree import ScanTree
-from .utils import HashSink, SinkRaw
+from .findskel import FindSkel
+from .utils import SinkRaw
 
 
-class App(ScanTree):
+class App(FindSkel):
     modify_if: int = flag("m", "Modify flag", action="count", default=0)
     variables: list = flag("d", "Define some variable", metavar="NAME=VALUE")
     extensions: list = flag("x", "Extension script", metavar="SCRIPT")
@@ -18,37 +17,43 @@ class App(ScanTree):
     fn_start = "start"
     fn_end = "end"
     tag = "APP"
-    default_re_includes = []
+    default_glob_includes = []
 
     def __init__(self) -> None:
-        self._entry_filters = []
+        self._glob_includes = []
+        self._glob_excludes = []
+        self._dir_depth = ()
+        self._file_sizes = []
+        self._paths_from = []
+
         self.defs: dict[str, str] = {}
         self.dry_run: bool | None = False
-        self.includes = []
-        self.excludes = []
         self.modex = []
         self.checks_modification = False
         self.total = Counter()
         super().__init__()
-
-    def ready(self) -> None:
-        from logging import basicConfig
+        from logging import basicConfig, addLevelName, WARNING
         from os import environ
 
         format = environ.get("LOG_FORMAT", "%(levelname)s: %(message)s")
         level = environ.get("LOG_LEVEL", "INFO")
         basicConfig(format=format, level=level)
+        addLevelName(WARNING, "WARN")
 
-        self._entry_filters.append(lambda e: e.is_file())
+        def check(e, **kwargs):
+            return e.is_file()
 
+        self.on_check_accept(check)
+
+    def ready(self) -> None:
+        if not self._glob_includes:
+            from re import compile
+
+            for x in self.default_glob_includes:
+                self._glob_includes.append(x)
         return super().ready()
 
     def start(self):
-        if not self.includes:
-            from re import compile
-
-            for x in self.default_re_includes:
-                self.includes.append(compile(x))
 
         if self.variables:
             for e in self.variables:
@@ -83,21 +88,18 @@ class App(ScanTree):
             for x in self.modex:
                 hasattr(x, fn_start) and getattr(x, fn_start)(self)
 
-        super().start()
+        self._walk_paths()
 
         fn_end = self.fn_end
         if fn_end:
             for x in self.modex:
                 hasattr(x, fn_end) and getattr(x, fn_end)(self)
 
-    def check_accept(self, x):
-        return super().check_accept(x) and x.is_file()
-
     def sink_file(self, src, encoding=None):
         return open(src, "wb", encoding=None)
 
-    def encoding_of(self, doc: object, src: str):
-        return "utf-8"
+    def encoding_of(self, doc: object, src: str) -> str:
+        return ""
 
     def process_entry(self, de):
         assert de.is_file()
@@ -110,42 +112,42 @@ class App(ScanTree):
         self.total.Files += 1
 
         # Load document
-        doc = None
         try:
-            this.data = doc = self.parse_file(file)
+            this.doc = self.parse_file(file)
         except:
             self.total.Errors += 1
-            return logging.exception("Failed to load %r", file)
+            exception("Failed to load %r", file)
+            exit(1)
         else:
-            logging.info(f"{self.tag} %s %s", "[#%d]" % self.total.Files, file)
+            info(f"{self.tag} %s %s", "[#%d]" % self.total.Files, file)
         # Feed to plugins
         if self.checks_modification:
             if self.modify_if == 2:
-                this.hash = mHash = self.hash_of(doc)
+                this.hash = mHash = self.hash_of(this.doc)
             else:
                 mHash = None
-                this.hash = self.hash_of(doc)
+                this.hash = self.hash_of(this.doc)
         else:
-            this.hash = mHash = (self.modify_if == 2) and self.hash_of(doc)
+            this.hash = mHash = (self.modify_if == 2) and self.hash_of(this.doc)
         mUrge = None
 
         fn = self.fn_process
         if fn:
             for x in self.modex:
                 r = getattr(x, fn, None)
-                if r and r(doc, this, self):
+                if r and r(this.doc, this, self):
                     mUrge = True
                     this.hash = True
 
         # Was modified?
         if mHash:  # (self.modify_if == 2) Modify if hash changed
-            mSave = not (self.hash_of(doc) == mHash)
+            mSave = not (self.hash_of(this.doc) == mHash)
         else:
             mSave = mUrge or (self.modify_if > 2)
         if not mSave:
             return None
         # Modified, Save it
-        encoding = self.use_encoding or self.encoding_of(doc, path)
+        encoding = self.use_encoding or self.encoding_of(this.doc, path)
         if self.dry_run is False:
             out = None
             if not self.output:
@@ -154,25 +156,35 @@ class App(ScanTree):
                 out = self.sink_out(encoding)
             else:
                 out = self.sink_file(self.output, encoding)
-            self.dump(doc, out, encoding)
+            self.dump(this.doc, out, encoding)
             out.close()
         self.total.Altered += 1
-        logging.warning(
-            f'Altered {self.dry_run is False and "!" or "?"} {encoding and (" [" + encoding + "]") or ""}',
+        warning(
+            f'Altered{self.dry_run is False and "!" or "?"} {encoding and ("[" + encoding + "]") or ""}',
         )
 
     def dump(self, doc: object, out: object, encoding: str):
         raise NotImplementedError()
+
+    def parse_source(self, src: object) -> object:
+        raise NotImplementedError()
+
+    def parse_file(self, src: str):
+        with open(src, "rb") as h:
+            return self.parse_source(h)
+
+    def parse_bytes(self, src: bytes):
+        from io import BytesIO
+
+        return self.parse_source(BytesIO(src))
 
     def sink_out(self, encoding):
         from sys import stdout
 
         return SinkRaw(stdout.buffer, encoding)
 
-    def hash_of(self, doc):
-        h = HashSink()
-        doc.write(h)
-        return h.digest.hexdigest()
+    def hash_of(self, doc: object) -> str:
+        raise NotImplementedError()
 
 
 class Counter:
@@ -199,16 +211,24 @@ class Status:
     def __init__(self, app: App):
         self.app = app
         self.hash: str | bool | None = None
-        self.data = None
+        self.doc = None
         self.path = ""
 
-    # def modified(self, parent=None):
-    #     h1 = self.hash
-    #     if h1 is True:
-    #         return True
-    #     elif h1:
-    #         h2 = app.hash_of(self.data)
-    #         return h2 and h1 != h2 and h2
+    def modified(self, parent=None):
+        h1 = self.hash
+        if h1 is True:
+            return True
+        elif h1:
+            h2 = self.app.hash_of(self.doc)
+            return h2 and h1 != h2 and h2
+
+    def replace(self, data: object):
+
+        if isinstance(data, bytes):
+            self.doc = self.app.parse_source(data)
+        elif isinstance(data, str):
+            self.doc = self.app.parse_file(data)
+        return self.doc
 
 
 import importlib.util

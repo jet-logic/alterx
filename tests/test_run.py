@@ -1,12 +1,12 @@
-import os
-from shutil import rmtree
 import unittest
 import tempfile
 import subprocess
+from shutil import rmtree
 from pathlib import Path
 
 
 class Test1(unittest.TestCase):
+    which = "alterx.xml"
 
     def _get_file_stats(self, f: Path):
         assert f.exists()
@@ -32,7 +32,7 @@ class Test1(unittest.TestCase):
             ),
             (
                 "test5.xml",
-                "<config><setting>on</setting><timeout>30</timeout></config>",
+                '<?xml version="1.0" encoding="utf-8" standalone="yes"?><config><setting>on</setting><timeout>30</timeout></config>',
                 {},
             ),
         ]
@@ -41,6 +41,7 @@ class Test1(unittest.TestCase):
             f.write_text(content)
             stat.update(self._get_file_stats(f))
         self.xml_samples = xml_samples
+        self.test_dir.joinpath("dummy.txt").write_text(f"dummy/")
 
     def tearDown(self):
         for item in self.test_dir.glob("*"):
@@ -74,7 +75,7 @@ def end(app):
         """.strip()
         )
         output = self.exec(
-            f"python -B -m alterx.xml -d VAR=foo -d quiet -x {ext1} {self.test_dir}".split()
+            f"python -B -m {self.which} -d VAR=foo -d quiet -x {ext1} {self.test_dir}".split()
         )
         self.assertRegex(output, r"^INIT\s+")
         self.assertRegex(output, r"\s+START\sfoo\s+")
@@ -95,13 +96,13 @@ def process(doc, stat, app):
         """.strip()
         )
         output = self.exec(
-            f"python -B -m alterx.xml -mm -x {ext1} {self.test_dir}".split()
+            f"python -B -m {self.which} -mm -x {ext1} {self.test_dir}".split()
         )
         for filename, content, etc in self.xml_samples:
             st = self._get_file_stats(etc["path"])
             if "test5.xml" == st["path"].name:
                 self.assertNotEqual(st, etc)
-                self.assertNotEqual(
+                self.assertEqual(
                     st["path"].read_text(),
                     "<config><setting>off</setting><timeout>30</timeout></config>",
                 )
@@ -119,7 +120,7 @@ def process(doc, stat, app):
         """.strip()
         )
         output = self.exec(
-            f"python -B -m alterx.xml -mm -o - -x {ext1} {self.test_dir/'test3.xml'}".split()
+            f"python -B -m {self.which} -mm -o - -x {ext1} {self.test_dir/'test3.xml'}".split()
         )
         self.assertIn('<root><x id="5">A1B</x><y id="2">C3D</y></root>', output)
 
@@ -132,13 +133,13 @@ def process(doc, stat, app):
         """.strip()
         )
         output = self.exec(
-            f"python -B -m alterx.xml -mm -o {self.test_dir/'test6.xml'} -x {ext2} {self.test_dir/'test1.xml'}".split()
+            f"python -B -m {self.which} -mm -o {self.test_dir/'test6.xml'} -x {ext2} {self.test_dir/'test1.xml'}".split()
         )
 
         for filename, content, etc in self.xml_samples:
             st = self._get_file_stats(etc["path"])
             self.assertEqual(st, etc)
-        self.assertIn(
+        self.assertEqual(
             "<data>@<id>@</id><value>@</value></data>",
             (self.test_dir / "test6.xml").read_text(),
         )
@@ -157,7 +158,7 @@ def process(doc, stat, app):
         """.strip()
         )
         output = self.exec(
-            f"python -B -m alterx.xml -m -x {ext1} {self.test_dir}".split()
+            f"python -B -m {self.which} -m -x {ext1} {self.test_dir}".split()
         )
         for filename, content, etc in self.xml_samples:
             st = self._get_file_stats(etc["path"])
@@ -170,7 +171,7 @@ def process(doc, stat, app):
         script = self.test_dir.joinpath("run.sh")
         script.write_text(
             rf"""
-python -B -m alterx.xml -m -x - {self.test_dir} << 'EOF'
+python -B -m {self.which} -m -x - {self.test_dir} << 'EOF'
 def process(doc, stat, app):
     for x in doc.iter('name'):
         x.text = '@'
@@ -186,6 +187,10 @@ EOF
                 self.assertNotEqual(st, etc)
             else:
                 self.assertEqual(st, etc)
+
+
+class Test2(Test1):
+    which = "alterx.xml.etree"
 
 
 if __name__ == "__main__":
