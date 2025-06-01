@@ -8,7 +8,9 @@ from .utils import SinkRaw
 
 class App(FindSkel):
     modify_if: int = flag("m", "Modify flag", action="count", default=0)
-    variables: list = flag("d", "Define some variable", metavar="NAME=VALUE")
+    variables: "list[str]" = flag(
+        "d", "Define some variable", metavar="NAME=VALUE", default=[]
+    )
     extensions: list = flag("x", "Extension script", metavar="SCRIPT")
     output: str = flag("o", "Output to FILE", metavar="FILE")
     use_encoding: str = flag("encoding", "Encoding to use when saving")
@@ -54,7 +56,6 @@ class App(FindSkel):
         return super().ready()
 
     def start(self):
-
         if self.variables:
             for e in self.variables:
                 k, s, v = e.partition("=")
@@ -94,6 +95,7 @@ class App(FindSkel):
         if fn_end:
             for x in self.modex:
                 hasattr(x, fn_end) and getattr(x, fn_end)(self)
+        self.total and info("Total {}".format(self.total))
 
     def sink_file(self, src, encoding=None):
         return open(src, "wb", encoding=None)
@@ -223,7 +225,6 @@ class Status:
             return h2 and h1 != h2 and h2
 
     def replace(self, data: object):
-
         if isinstance(data, bytes):
             self.doc = self.app.parse_source(data)
         elif isinstance(data, str):
@@ -304,8 +305,8 @@ def load_stdin_as_module():
 
     # Create a new module
     spec = importlib.util.spec_from_loader(
-        module_name, loader=None, origin="<stdin>"  # We'll exec the code directly
-    )
+        module_name, loader=None, origin="<stdin>"
+    )  # We'll exec the code directly
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module
 

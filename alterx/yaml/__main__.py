@@ -1,22 +1,22 @@
+import yaml
 from ..app import App
 from ..utils import HashSink
-import json
 
 
-class AlterJSON(App):
-    tag = "JSON"
-    default_glob_includes = (r"*.json", r"*.jsn")
+class AlterYAML(App):
+    tag = "YAML"
+    default_glob_includes = (r"*.yaml", r"*.yml")
 
     def parse_source(self, src: object) -> object:
-        return json.load(src)
+        return yaml.safe_load(src)
 
     def hash_of(self, doc: object) -> str:
         h = HashSink()
-        json.dump(doc, h)
+        yaml.dump(doc, h)
         return h.digest.hexdigest()
 
     def dump(self, doc: object, out: object, encoding: str):
-        json.dump(doc, out)
+        yaml.dump(doc, out)
 
 
-(__name__ == "__main__") and AlterJSON().main()
+(__name__ == "__main__") and AlterYAML().main()

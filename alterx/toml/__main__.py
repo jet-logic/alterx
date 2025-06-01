@@ -1,8 +1,6 @@
-from argparse import ArgumentParser
-from typing import Sequence
 from ..app import App
-from ..main import flag
-from ..utils import HashSink
+from tomlkit import dumps, load
+from hashlib import md5
 
 
 class AlterToml(App):
@@ -10,16 +8,15 @@ class AlterToml(App):
     default_glob_includes = (r"*.toml", r"*.tml")
 
     def parse_source(self, src: object) -> object:
-        from tomlkit import load
-
         return load(src)
 
     def hash_of(self, doc: object) -> str:
-        from tomlkit import dump
+        h = md5()
+        h.update(dumps(doc).encode())
+        return h.hexdigest()
 
-        h = HashSink()
-        dump(doc, h)
-        return h.digest.hexdigest()
+    def dump(self, doc: object, out: object, encoding: str):
+        out.write(dumps(doc).encode())
 
 
 (__name__ == "__main__") and AlterToml().main()

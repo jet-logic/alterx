@@ -47,7 +47,6 @@ class AlterXMLET(App):
 
 
 class AlterXML(AlterXMLET):
-
     save_pretty: bool = flag("pretty", "Save pretty formated", default=None)
     ns_clean: bool = flag(
         "ns-clean", "Try to clean up redundant namespace declarations", default=False
@@ -64,7 +63,6 @@ class AlterXML(AlterXMLET):
     # huge_tree - disable security restrictions and support very deep trees and very long text content (only affects libxml2 2.7+)
 
     def _get_etree(self):
-
         from lxml import etree
 
         return etree
