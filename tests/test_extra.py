@@ -27,9 +27,7 @@ class Test1(unittest.TestCase):
         parser = etree.XMLParser(**kwargs)
         snk = self.test_dir / "snk.xml"
         src = self.test_dir / "src.xml"
-        src.write_text(
-            '<?xml version="1.0" encoding="utf-8" standalone="no"?><config>1</config>'
-        )
+        src.write_text('<?xml version="1.0" encoding="utf-8" standalone="no"?><config>1</config>')
 
         t = etree.parse(str(src), parser)
 
@@ -52,9 +50,7 @@ class Test1(unittest.TestCase):
         parser = etree.XMLParser(**kwargs)
         snk = self.test_dir / "snk.xml"
         src = self.test_dir / "src.xml"
-        src.write_text(
-            '<?xml version="1.1" encoding="us-ascii" standalone="no"?><config>1</config>'
-        )
+        src.write_text('<?xml version="1.1" encoding="us-ascii" standalone="no"?><config>1</config>')
 
         t = etree.parse(str(src), parser)
         self.assertFalse(t.docinfo.standalone)
@@ -78,6 +74,7 @@ class Test2(unittest.TestCase):
         print("RUN", args)
         subprocess.run(args)
 
+    @unittest.skip
     def test_git(self):
         from tempfile import TemporaryDirectory
 

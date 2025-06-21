@@ -12,11 +12,11 @@ class AlterYAML(App):
 
     def hash_of(self, doc: object) -> str:
         h = HashSink()
-        yaml.dump(doc, h)
+        yaml.dump(doc, h, encoding="utf-8")
         return h.digest.hexdigest()
 
     def dump(self, doc: object, out: object, encoding: str):
-        yaml.dump(doc, out)
+        yaml.dump(doc, out, encoding="utf-8")
 
 
 (__name__ == "__main__") and AlterYAML().main()

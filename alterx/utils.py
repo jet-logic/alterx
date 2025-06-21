@@ -32,5 +32,12 @@ class HashSink:
             h = md5()
         self.digest = h
 
-    def write(self, x):
+    def write(self, x: bytes):
         self.digest.update(x)
+
+
+class HashSinkText(HashSink):
+    __slots__ = ("digest",)
+
+    def write(self, x: str):
+        self.digest.update(x.encode())

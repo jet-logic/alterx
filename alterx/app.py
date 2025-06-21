@@ -8,9 +8,7 @@ from .utils import SinkRaw
 
 class App(FindSkel):
     modify_if: int = flag("m", "Modify flag", action="count", default=0)
-    variables: "list[str]" = flag(
-        "d", "Define some variable", metavar="NAME=VALUE", default=[]
-    )
+    variables: "list[str]" = flag("d", "Define some variable", metavar="NAME=VALUE", default=[])
     extensions: list = flag("x", "Extension script", metavar="SCRIPT")
     output: str = flag("o", "Output to FILE", metavar="FILE")
     use_encoding: str = flag("encoding", "Encoding to use when saving")
@@ -150,12 +148,14 @@ class App(FindSkel):
             return None
         # Modified, Save it
         encoding = self.use_encoding or self.encoding_of(this.doc, path)
-        if self.dry_run is False:
+        if self.output == "-":
+            out = self.sink_out(encoding)
+            self.dump(this.doc, out, encoding)
+            out.close()
+        elif self.dry_run is False:
             out = None
             if not self.output:
                 out = self.sink_file(this.path, encoding)
-            elif self.output == "-":  # ['-']
-                out = self.sink_out(encoding)
             else:
                 out = self.sink_file(self.output, encoding)
             self.dump(this.doc, out, encoding)
@@ -304,9 +304,7 @@ def load_stdin_as_module():
     module_name = f"stdin_module_{hash_obj}"
 
     # Create a new module
-    spec = importlib.util.spec_from_loader(
-        module_name, loader=None, origin="<stdin>"
-    )  # We'll exec the code directly
+    spec = importlib.util.spec_from_loader(module_name, loader=None, origin="<stdin>")  # We'll exec the code directly
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module
 

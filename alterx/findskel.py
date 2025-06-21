@@ -38,9 +38,7 @@ class FindSkel(WalkDir, Main):
             pass
         else:
             if b:
-                argp.add_argument(
-                    "--act", action="store_false", dest="dry_run", help="not a test run"
-                )
+                argp.add_argument("--act", action="store_false", dest="dry_run", help="not a test run")
             else:
                 argp.add_argument(
                     "--dry-run",
@@ -234,9 +232,9 @@ def globre3(g: str, base="", escape=lambda x: "", no_neg=False):
                 res = res + ".*"
                 if i < n and "/" == g[i]:
                     i = i + 1
-                    res += "/?"
+                    res = res + "/?"
             else:
-                res = res + "[^/]+"
+                res = res + "[^/]*"
         elif c == "?":
             res = res + "[^/]"
         elif c == "[":
@@ -258,7 +256,9 @@ def globre3(g: str, base="", escape=lambda x: "", no_neg=False):
                     stuff = "\\" + stuff
                 res = "%s[%s]" % (res, stuff)
         else:
-            res = res + escape(c)
+            x = escape(c)
+            assert x
+            res = res + x
     if at_start:
         if base:
             res = "^" + escape(base) + "/" + res + r"\Z"

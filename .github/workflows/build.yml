@@ -1,4 +1,4 @@
-name: Python CI
+name: Tests
 
 on:
   push:
@@ -26,7 +26,7 @@ jobs:
         run: sh tests/run_tests_with_coverage.sh
 
       - name: Run mypy
-        run: mypy blob_descriptor || true
+        run: mypy alterx || true
 
       - name: Run flake8
         run: flake8 --ignore=E501 || true
