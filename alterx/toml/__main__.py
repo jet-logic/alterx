@@ -1,4 +1,4 @@
-from alterx.toml import AlterToml
+from ..toml import AlterToml
 
 
 (__name__ == "__main__") and AlterToml().main()

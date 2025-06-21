@@ -1,4 +1,4 @@
-from alterx.app import App
+from ..app import App
 
 
 from tomlkit import dumps, load
