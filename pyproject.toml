@@ -1,0 +1,19 @@
+[project]
+name = "alterx"
+dynamic = ["version"]
+description = ""
+authors = [
+    {name = "Jet-Logic"},
+]
+
+[build-system]
+requires = ["setuptools>=42", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.dynamic]
+version = {attr = "alterx.__init__.__version__"}
+[tool.black]
+line-length = 127
+
+[tool.flake8]
+max-line-length = 127
