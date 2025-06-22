@@ -27,9 +27,9 @@ class App(FindSkel):
         self._paths_from = []
 
         self.defs: dict[str, str] = {}
-        self.dry_run: bool | None = False
+        # self.dry_run: bool | None = False
         self.modex = []
-        self.checks_modification = False
+        # self.checks_modification = False
         self.total = Counter()
         super().__init__()
         from logging import basicConfig, addLevelName, WARNING
@@ -121,14 +121,16 @@ class App(FindSkel):
         else:
             info(f"{self.tag} %s %s", "[#%d]" % self.total.Files, file)
         # Feed to plugins
-        if self.checks_modification:
+        if self.modify_if > 0:
             if self.modify_if == 2:
                 this.hash = mHash = self.hash_of(this.doc)
             else:
                 mHash = None
                 this.hash = self.hash_of(this.doc)
         else:
-            this.hash = mHash = (self.modify_if == 2) and self.hash_of(this.doc)
+            # this.hash = mHash = (self.modify_if == 2) and self.hash_of(this.doc)
+            this.hash = mHash = False
+
         mUrge = None
 
         fn = self.fn_process
@@ -152,7 +154,7 @@ class App(FindSkel):
             out = self.sink_out(encoding)
             self.dump(this.doc, out, encoding)
             out.close()
-        elif self.dry_run is False:
+        elif self.modify_if > 0:
             out = None
             if not self.output:
                 out = self.sink_file(this.path, encoding)
@@ -162,7 +164,7 @@ class App(FindSkel):
             out.close()
         self.total.Altered += 1
         warning(
-            f'Altered{self.dry_run is False and "!" or "?"} {encoding and ("[" + encoding + "]") or ""}',
+            f'Altered{(self.modify_if >0) and "!" or "?"} {encoding and ("[" + encoding + "]") or ""}',
         )
 
     def dump(self, doc: object, out: object, encoding: str):
