@@ -32,7 +32,7 @@ class TestTOMLProcessing(unittest.TestCase):
 def init(app):
     app.defs['PYTHON_REQUIRES'] = ">=3.9"
     
-def process(doc, stat, app):
+def process(doc, file_info, app):
     if 'project' in doc:
         doc['project']['requires-python'] = app.defs['PYTHON_REQUIRES']
         # return True

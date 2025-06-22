@@ -37,7 +37,7 @@ def init(app):
         'TODAY': datetime.now().strftime('%Y-%m-%d')
     })
 
-def process(doc, stat, app):
+def process(doc, file_info, app):
     modified = False
     root = doc.getroot()
     ns = {'sm': 'http://www.sitemaps.org/schemas/sitemap/0.9'}

@@ -13,7 +13,8 @@ class AlterHTML(AlterXML):
         kwargs["remove_pis"] = self.strip_pis
         # kwargs["strip_cdata"] = self.strip_cdata
         parser = etree.HTMLParser(**kwargs)
-        return etree.parse(open(src, "rb"), parser)
+        with open(src, "rb") as h:
+            return etree.parse(h, parser)
 
     def dump(self, doc: object, out: object, encoding: str):
         kwargs = {"method": "html"}

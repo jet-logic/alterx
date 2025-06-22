@@ -30,7 +30,7 @@ class TestJSONProcessing(unittest.TestCase):
 def init(app):
     app.defs['NEW_API'] = "https://api.new.example.com/v2"
 
-def process(doc, stat, app):
+def process(doc, file_info, app):
     modified = False
     
     if 'api_url' in doc:
@@ -116,7 +116,7 @@ def end(app):
         import subprocess
 
         script_content = """
-def process(doc, stat, app):
+def process(doc, file_info, app):
     doc['processed'] = True
     return True
 """

@@ -44,7 +44,7 @@ def init(app):
         'IMAGE_TAG': '2.0.0'
     })
 
-def process(doc, stat, app):
+def process(doc, file_info, app):
     modified = False
     
     # Add labels

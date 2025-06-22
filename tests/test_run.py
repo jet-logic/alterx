@@ -68,15 +68,13 @@ def init(app):
     print("INIT")
 def start(app):
     print(f"START {app.defs['VAR']}")
-def process(doc, stat, app):
-    print(f"DATA {stat.path}")
+def process(doc, file_info, app):
+    print(f"DATA {file_info.path}")
 def end(app):
     print(f"END {app.defs['quiet']}")
         """.strip()
         )
-        output = self.exec(
-            f"python -B -m {self.which} -d VAR=foo -d quiet -x {ext1} {self.test_dir}".split()
-        )
+        output = self.exec(f"python -B -m {self.which} -d VAR=foo -d quiet -x {ext1} {self.test_dir}".split())
         self.assertRegex(output, r"^INIT\s+")
         self.assertRegex(output, r"\s+START\sfoo\s+")
         self.assertRegex(output, r"\s+END\sTrue\s+")
@@ -90,14 +88,12 @@ def end(app):
         ext1 = self.test_dir.joinpath("ext1.py")
         ext1.write_text(
             r"""
-def process(doc, stat, app):
+def process(doc, file_info, app):
     for x in doc.iter('setting'):
         x.text = 'off'
         """.strip()
         )
-        output = self.exec(
-            f"python -B -m {self.which} -mm -x {ext1} {self.test_dir}".split()
-        )
+        output = self.exec(f"python -B -m {self.which} -mm -x {ext1} {self.test_dir}".split())
         for filename, content, etc in self.xml_samples:
             st = self._get_file_stats(etc["path"])
             if "test5.xml" == st["path"].name:
@@ -114,20 +110,18 @@ def process(doc, stat, app):
         ext1 = self.test_dir.joinpath("ext1.py")
         ext1.write_text(
             r"""
-def process(doc, stat, app):
+def process(doc, file_info, app):
     for x in doc.iter('x'):
         x.set("id", str(int(x.get("id"))+4) )
         """.strip()
         )
-        output = self.exec(
-            f"python -B -m {self.which} -mm -o - -x {ext1} {self.test_dir/'test3.xml'}".split()
-        )
+        output = self.exec(f"python -B -m {self.which} -mm -o - -x {ext1} {self.test_dir/'test3.xml'}".split())
         self.assertIn('<root><x id="5">A1B</x><y id="2">C3D</y></root>', output)
 
         ext2 = self.test_dir.joinpath("ext2.py")
         ext2.write_text(
             r"""
-def process(doc, stat, app):
+def process(doc, file_info, app):
     for x in doc.iter():
         x.text = "@"
         """.strip()
@@ -148,7 +142,7 @@ def process(doc, stat, app):
         ext1 = self.test_dir.joinpath("ext1.py")
         ext1.write_text(
             r"""
-def process(doc, stat, app):
+def process(doc, file_info, app):
     for x in doc.iter('name'):
         x.text = '@'
         return True
@@ -157,9 +151,7 @@ def process(doc, stat, app):
         return True
         """.strip()
         )
-        output = self.exec(
-            f"python -B -m {self.which} -m -x {ext1} {self.test_dir}".split()
-        )
+        output = self.exec(f"python -B -m {self.which} -m -x {ext1} {self.test_dir}".split())
         for filename, content, etc in self.xml_samples:
             st = self._get_file_stats(etc["path"])
             if st["path"].name in ("test2.xml", "test4.xml"):
@@ -172,7 +164,7 @@ def process(doc, stat, app):
         script.write_text(
             rf"""
 python -B -m {self.which} -m -x - {self.test_dir} << 'EOF'
-def process(doc, stat, app):
+def process(doc, file_info, app):
     for x in doc.iter('name'):
         x.text = '@'
         return True
