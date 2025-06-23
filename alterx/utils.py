@@ -21,6 +21,13 @@ class SinkRaw:
     def close(self):
         pass
 
+    def __enter__(self):
+        assert self.out
+        return self.out
+
+    def __exit__(self, *excinfo):
+        self.close()
+
 
 class HashSink:
     __slots__ = ("digest",)

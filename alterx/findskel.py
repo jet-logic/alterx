@@ -2,7 +2,7 @@ from os import DirEntry
 from .main import Main
 from .walkdir import WalkDir
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 
 
 class FindSkel(WalkDir, Main):
@@ -37,9 +37,9 @@ class FindSkel(WalkDir, Main):
         except AttributeError:
             pass
         else:
-            if b:
+            if b is True:
                 argp.add_argument("--act", action="store_false", dest="dry_run", help="not a test run")
-            else:
+            elif b is False:
                 argp.add_argument(
                     "--dry-run",
                     action="store_true",

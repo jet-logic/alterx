@@ -128,7 +128,7 @@ def end(app):
         # Run in dry-run mode (no changes should be made)
         with CD(self.test_dir):
             app = AlterJSON()
-            app.main(["-x", "./update_configs.py", "configs"])
+            app.main(["-n", "-x", "./update_configs.py", "configs"])
 
         # Verify no files were changed
         for filename, original in self.original_files:

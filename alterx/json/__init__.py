@@ -1,7 +1,5 @@
 from ..app import App
 from ..utils import HashSinkText
-
-
 import json
 
 

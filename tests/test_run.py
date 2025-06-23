@@ -84,6 +84,7 @@ def end(app):
             st = self._get_file_stats(etc["path"])
             self.assertEqual(st, etc)
 
+    # @unittest.skip
     def test_hash_modification(self):
         ext1 = self.test_dir.joinpath("ext1.py")
         ext1.write_text(
@@ -106,6 +107,7 @@ def process(doc, file_info, app):
             else:
                 self.assertEqual(st, etc)
 
+    # @unittest.skip
     def test_output_to_stdout_or_file(self):
         ext1 = self.test_dir.joinpath("ext1.py")
         ext1.write_text(
@@ -138,6 +140,7 @@ def process(doc, file_info, app):
             (self.test_dir / "test6.xml").read_text(),
         )
 
+    # @unittest.skip
     def test_extension_modification(self):
         ext1 = self.test_dir.joinpath("ext1.py")
         ext1.write_text(
@@ -159,6 +162,7 @@ def process(doc, file_info, app):
             else:
                 self.assertEqual(st, etc)
 
+    # @unittest.skip
     def test_extension_from_stdin(self):
         script = self.test_dir.joinpath("run.sh")
         script.write_text(

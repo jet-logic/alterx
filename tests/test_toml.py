@@ -10,32 +10,68 @@ class TestTOMLProcessing(unittest.TestCase):
         self.test_dir = Path(tempfile.mkdtemp())
 
         # Create test files
-        self.files = {
-            "project_a.toml": """
-                [build-system]
-                requires = ["setuptools>=61.0.0"]
-                build-backend = "setuptools.build_meta"
-            """,
-            "project_b.toml": """
-                [project]
-                name = "test-project"
-            """,
-        }
+        self.files = (
+            (
+                self.test_dir / "project_a.toml",
+                r"""
+[build-system]
+requires = ["setuptools>=61.0.0"]
+build-backend = "setuptools.build_meta"
 
-        for name, content in self.files.items():
-            (self.test_dir / name).write_text(content.strip())
+[tool.poetry]
+name = "project-a"
+version = "1.0.0"
+            """,
+            ),
+            (
+                self.test_dir / "project_b.toml",
+                r"""
+[project]
+name = "project-b"
+dynamic = ["version"]
+            """,
+            ),
+        )
+
+        for path, content in self.files:
+            path.write_text(content.strip())
 
         # Create processor script
         self.script = self.test_dir / "processor.py"
         self.script.write_text(
-            """
+            r"""
 def init(app):
-    app.defs['PYTHON_REQUIRES'] = ">=3.9"
-    
-def process(doc, file_info, app):
-    if 'project' in doc:
+    # Define our standard versions
+    app.defs.update({
+        'SETUPTOOLS_VERSION': ">=68.0.0",
+        'PYTHON_REQUIRES': ">=3.8"
+    })
+
+def process(doc, stat, app):
+    modified = False
+
+    # Update setuptools version
+    if 'build-system' in doc and 'requires' in doc['build-system']:
+        reqs = doc['build-system']['requires']
+        for i, req in enumerate(reqs):
+            if req.startswith('setuptools'):
+                reqs[i] = f"setuptools{app.defs['SETUPTOOLS_VERSION']}"
+                modified = True
+
+    # Add python requires if missing
+    if 'project' in doc and 'requires-python' not in doc['project']:
         doc['project']['requires-python'] = app.defs['PYTHON_REQUIRES']
-        # return True
+        modified = True
+
+    # Add description if missing
+    if 'project' in doc and 'description' not in doc['project']:
+        doc['project']['description'] = ""
+        modified = True
+
+    return modified
+
+def end(app):
+    print(f"Updated {app.total.Altered}/{app.total.Files} TOML files")
 """
         )
 
@@ -44,27 +80,34 @@ def process(doc, file_info, app):
 
         shutil.rmtree(self.test_dir)
 
-    def test_toml_processing(self):
+    def _test_toml_processing(self, m="-m"):
         # Run processor
         app = AlterToml()
-        app.main(["-mm", "-x", str(self.script), str(self.test_dir)])
+        app.main([m, "-x", str(self.script), str(self.test_dir)])
 
-        # Verify changes
-        for name in self.files:
-            content = tomlkit.loads((self.test_dir / name).read_text())
-            if "project" in content:
-                self.assertEqual(content["project"]["requires-python"], ">=3.9", f"{name} not processed correctly")
+        self.assertEqual(
+            tuple(tomlkit.loads(path.read_text()) for path, content in self.files),
+            (
+                {
+                    "build-system": {"requires": ["setuptools>=68.0.0"], "build-backend": "setuptools.build_meta"},
+                    "tool": {"poetry": {"name": "project-a", "version": "1.0.0"}},
+                },
+                {"project": {"name": "project-b", "dynamic": ["version"], "requires-python": ">=3.8", "description": ""}},
+            ),
+        )
 
+    # @unittest.skip
+    def test_toml_processing(self):
+        self._test_toml_processing()
+
+    # @unittest.skip
     def test_no_unnecessary_changes(self):
-        # First run should modify files
-        app = AlterToml()
-        app.main(["-mm", "-x", str(self.script), str(self.test_dir)])
-        self.assertEqual(app.total.Altered, 1)  # Only project_b.toml has [project]
+        self._test_toml_processing("-mm")
 
-        # Second run should make no changes
-        app = AlterToml()
-        app.main(["-mm", "-x", str(self.script), str(self.test_dir)])
-        self.assertEqual(app.total.Altered, 0)
+        times = [(filename, filename.stat().st_mtime) for filename, _ in self.files]
+
+        self._test_toml_processing("-mm")
+        self.assertTrue(all(p.stat().st_mtime == m for p, m in times))
 
 
 if __name__ == "__main__":
