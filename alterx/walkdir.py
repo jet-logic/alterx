@@ -19,14 +19,10 @@ class FileSystemEntry:
         return stat(self.path, follow_symlinks=follow_symlinks)
 
     def is_symlink(self, follow_symlinks: bool = True) -> bool:
-        return (
-            self.stat(follow_symlinks=follow_symlinks).st_mode & 0o170000
-        ) == 0o120000
+        return (self.stat(follow_symlinks=follow_symlinks).st_mode & 0o170000) == 0o120000
 
     def is_dir(self, follow_symlinks: bool = True) -> bool:
-        return (
-            self.stat(follow_symlinks=follow_symlinks).st_mode & 0o170000
-        ) == 0o040000
+        return (self.stat(follow_symlinks=follow_symlinks).st_mode & 0o170000) == 0o040000
 
     def is_file(self, follow_symlinks: bool = True) -> bool:
         return (self.stat(follow_symlinks=follow_symlinks).st_mode & 0o170000) in (
@@ -93,9 +89,7 @@ class WalkDir:
             print(ex)
             return True
 
-    def _walk_breadth_first(
-        self, src: str, depth: int = 0
-    ) -> Generator[DirEntry, None, None]:
+    def _walk_breadth_first(self, src: str, depth: int = 0) -> Generator[DirEntry, None, None]:
         depth += 1
         for de in self.scan_directory(src):
             if self.check_accept(de, depth):
@@ -103,9 +97,7 @@ class WalkDir:
             if self.check_enter(de, depth):
                 self._walk_breadth_first(de.path, depth)
 
-    def _walk_depth_first(
-        self, src: str, depth: int = 0
-    ) -> Generator[DirEntry, None, None]:
+    def _walk_depth_first(self, src: str, depth: int = 0) -> Generator[DirEntry, None, None]:
         depth += 1
         for de in self.scan_directory(src):
             if self.check_enter(de, depth):

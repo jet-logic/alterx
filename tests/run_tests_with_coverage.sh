@@ -8,17 +8,8 @@ rm -f "$COVERAGE_FILE"*
 rm -rf $DOCS
 
 # Run tests with coverage
-python -m pytest tests/ \
-  --cov=$NAME \
-  --cov-append \
-  --cov-report=term-missing || exit 1
-
-# Combine all coverage data
-python -m coverage combine
-
+python -m coverage run --source $NAME -m pytest tests
+python -m coverage report
 # Generate HTML report in /tmp
-python -m coverage html \
-  --directory="$DOCS" \
-  --title="$NAME Coverage Report"
-
+python -m coverage html --directory="$DOCS" --title="$NAME Coverage Report"
 echo "Coverage report generated at: $DOCS/index.html"

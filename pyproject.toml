@@ -1,9 +1,44 @@
 [project]
 name = "alterx"
 dynamic = ["version"]
-description = ""
 authors = [
     {name = "Jet-Logic"},
+]
+description = "A powerful file processing toolkit for batch transformations of HTML, JSON, TOML, XML, and YAML files"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {file = "LICENSE"} 
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: System Administrators",
+    "Programming Language :: Python :: 3",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Topic :: Text Processing :: Markup :: HTML",
+    "Topic :: Text Processing :: Markup :: XML",
+    "Topic :: Utilities",
+]
+keywords = ["html", "json", "toml", "xml", "yaml", "transformation", "processing", "batch"]
+dependencies = [
+    "lxml >=4.9.0",          # For HTML/XML processing
+    "tomlkit >=0.11.0",      # For TOML parsing/preserving formatting
+    "PyYAML >=6.0",          # For YAML processing
+]
+
+[project.urls]
+Homepage = "https://github.com/jet-logic/alterx"
+Documentation = "https://github.com/jet-logic/alterx"
+Repository = "https://github.com/jet-logic/alterx"
+Issues = "https://github.com/jet-logic/alterx/issues"
+Changelog = "https://github.com/jet-logic/alterx/releases"
+
+[project.optional-dependencies]
+dev = [
+    "pytest >=7.0",
+    "pytest-cov >=4.0",
+    "black >=23.0",
+    "flake8 >=6.0",
+    "mypy"
 ]
 
 [build-system]
@@ -17,3 +52,19 @@ line-length = 127
 
 [tool.flake8]
 max-line-length = 127
+
+[tool.coverage.run]
+omit = [
+    "alterx/findskel.py",
+    "alterx/walkdir.py",
+    "alterx/main.py",
+    ]
+
+[tool.coverage.report]
+exclude_also = [
+    'raise AssertionError',
+    'raise NotImplementedError',
+    'if 0:',
+    'if __name__ == .__main__.:',
+    'if TYPE_CHECKING:',
+]

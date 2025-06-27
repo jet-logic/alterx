@@ -12,6 +12,7 @@ class App(FindSkel):
     extensions: list = flag("x", "Extension script", metavar="SCRIPT")
     output: str = flag("o", "Output to FILE", metavar="FILE")
     use_encoding: str = flag("encoding", "Encoding to use when saving")
+    dry_run: bool = flag("n", "No modifiaction will happend")
     fn_process = "process"
     fn_init = "init"
     fn_start = "start"
@@ -27,9 +28,9 @@ class App(FindSkel):
         self._paths_from = []
 
         self.defs: dict[str, str] = {}
-        self.dry_run: bool | None = False
+        self.dry_run: bool | None = None
         self.modex = []
-        self.checks_modification = False
+        # self.checks_modification = False
         self.total = Counter()
         super().__init__()
         from logging import basicConfig, addLevelName, WARNING
@@ -121,14 +122,18 @@ class App(FindSkel):
         else:
             info(f"{self.tag} %s %s", "[#%d]" % self.total.Files, file)
         # Feed to plugins
-        if self.checks_modification:
+        if self.modify_if > 0:
             if self.modify_if == 2:
                 this.hash = mHash = self.hash_of(this.doc)
             else:
+                assert self.modify_if == 1
                 mHash = None
                 this.hash = self.hash_of(this.doc)
         else:
-            this.hash = mHash = (self.modify_if == 2) and self.hash_of(this.doc)
+            assert self.modify_if == 0
+            # this.hash = mHash = (self.modify_if == 2) and self.hash_of(this.doc)
+            this.hash = mHash = False
+
         mUrge = None
 
         fn = self.fn_process
@@ -149,20 +154,17 @@ class App(FindSkel):
         # Modified, Save it
         encoding = self.use_encoding or self.encoding_of(this.doc, path)
         if self.output == "-":
-            out = self.sink_out(encoding)
-            self.dump(this.doc, out, encoding)
-            out.close()
-        elif self.dry_run is False:
-            out = None
-            if not self.output:
-                out = self.sink_file(this.path, encoding)
-            else:
-                out = self.sink_file(self.output, encoding)
-            self.dump(this.doc, out, encoding)
-            out.close()
+            with self.sink_out(encoding) as out:
+                self.dump(this.doc, out, encoding)
+        elif self.dry_run:
+            pass
+        else:
+            out = self.sink_file(self.output, encoding) if self.output else self.sink_file(this.path, encoding)
+            with out:
+                self.dump(this.doc, out, encoding)
         self.total.Altered += 1
         warning(
-            f'Altered{self.dry_run is False and "!" or "?"} {encoding and ("[" + encoding + "]") or ""}',
+            f'Altered{(self.modify_if >0) and "!" or "?"} {encoding and ("[" + encoding + "]") or ""}',
         )
 
     def dump(self, doc: object, out: object, encoding: str):

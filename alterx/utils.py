@@ -21,6 +21,13 @@ class SinkRaw:
     def close(self):
         pass
 
+    def __enter__(self):
+        assert self.out
+        return self.out
+
+    def __exit__(self, *excinfo):
+        self.close()
+
 
 class HashSink:
     __slots__ = ("digest",)
@@ -32,5 +39,12 @@ class HashSink:
             h = md5()
         self.digest = h
 
-    def write(self, x):
+    def write(self, x: bytes):
         self.digest.update(x)
+
+
+class HashSinkText(HashSink):
+    __slots__ = ("digest",)
+
+    def write(self, x: str):
+        self.digest.update(x.encode())

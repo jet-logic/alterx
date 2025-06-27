@@ -4,6 +4,8 @@ import subprocess
 from shutil import rmtree
 from pathlib import Path
 
+from alterx.app import Counter, load_stdin_as_module
+
 
 class Test1(unittest.TestCase):
 
@@ -82,6 +84,19 @@ class Test2(unittest.TestCase):
             print(f"Temporary directory created at: {temp_dir}")
             self.exec(f"git init {temp_dir}".split())
             self.exec(f"git init {temp_dir}".split())
+
+
+class Test3(unittest.TestCase):
+
+    def test_counter(self):
+        total = Counter()
+        total.lost = 4
+        total["lives"] = 2
+        self.assertEqual(total.win, 0)
+        self.assertEqual(total["lost"], 4)
+        self.assertIn("win", total)
+        self.assertSetEqual(set(total), {"win", "lost", "lives"})
+        self.assertDictEqual(dict(x.split() for x in str(total).split(";") if x), {"win": "0", "lost": "4", "lives": "2"})
 
 
 if __name__ == "__main__":

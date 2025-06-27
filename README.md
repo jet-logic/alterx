@@ -1,44 +1,60 @@
-### Overview
+# AlterX - The File Transformation Toolkit
 
-AlterX is a modular file processing framework that supports multiple formats:
+<!-- [![Python Version](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/) -->
+<!-- [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) -->
 
-- XML/HTML (via lxml or built-in ElementTree)
-- JSON
-- YAML
-- TOML
+[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
+[![Tests Status](https://github.com/jet-logic/alterx/actions/workflows/tests.yml/badge.svg)](https://github.com/jet-logic/alterx/actions)
+[![PyPI version fury.io](https://badge.fury.io/py/alterx.svg)](https://pypi.python.org/pypi/alterx/)
 
-### Key Features
+AlterX is a powerful command-line tool for batch processing and transforming files in various formats. It provides a consistent framework for modifying HTML, JSON, TOML, XML, and YAML files with custom Python logic.
 
-1. **File Processing Capabilities**:
+## Features
 
-   - Batch processing of files with glob patterns
-   - Modification detection via hashing
-   - Dry-run mode for testing changes
-   - Supports both in-place modification and output to different files
+- **Multi-format support**: Process HTML, JSON, TOML, XML, and YAML files
+- **Extension system**: Define transformations in Python scripts
+- **Smart modification**: Only changes files that need updates
+- **Batch processing**: Recursively process entire directories
+- **Dry run mode**: Test changes before applying them
+- **Comprehensive logging**: Detailed output about modifications
 
-2. **Extension System**:
+## ☕ Support
 
-   - Loadable Python modules/scripts to customize processing
-   - Lifecycle hooks (init, start, process, end)
-   - Can load extensions from files or stdin
+If you find this project helpful, consider supporting me:
 
-3. **Core Components**:
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/B0B01E8SY7)
 
-   - `App` class - Base application framework
-   - `FindSkel` - File traversal and filtering system
-   - Format-specific subclasses (AlterXML, AlterJSON, etc.)
-   - Command-line argument parsing via `Main` base class
+## Installation
 
-4. **Advanced Features**:
-   - File glob filtering (include/exclude patterns)
-   - Size and depth filters
-   - Variable definitions
-   - Encoding handling
-   - XML-specific features like pretty printing, namespace cleaning
+```bash
+pip install alterx
+```
 
-### Example Use Cases
+## Quick Start
 
-- Batch modification of XML/HTML files
-- Transforming configuration files (JSON/YAML/TOML)
-- Automated content updates across multiple files
-- File validation and reporting
+1. Create a processing script (e.g., `transform.py`):
+
+```python
+def init(app):
+    app.defs['VERSION'] = "2.0.0"
+
+def process(doc, file_info, app):
+    if 'version' in doc:
+        doc['version'] = app.defs['VERSION']
+        return True
+```
+
+2. Run AlterX:
+
+```bash
+# Process JSON files
+alterx json -x transform.py path/to/files
+```
+
+### Example Use Cases Shown
+
+- [JSON](Example-json.md) Updating API URLs across multiple JSON config files
+- [TOML](Example-toml.md) Maintaining consistent Python project TOML files
+- [HTML](Example-html.md) Standardizing HTML documents (adding missing tags, accessibility improvements)
+- [XML](Example-xml.md) Processing XML sitemaps (adding/removing URLs, updating dates)
+- [YAML](Example-yaml.md) Managing Kubernetes YAML manifests (adding labels, updating image tags)
