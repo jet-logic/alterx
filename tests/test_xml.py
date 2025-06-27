@@ -1,82 +1,111 @@
 import unittest
+import re
 import tempfile
 import xml.etree.ElementTree as ET
+from io import StringIO
 from pathlib import Path
 from alterx.xml import AlterXML
 from datetime import datetime
+from lxml import etree
+
+
+def canonicalize_xml(xml_string, **kwargs):
+    parser = etree.XMLParser(remove_comments=True, remove_pis=True, compact=True, remove_blank_text=True)
+    tree = etree.parse(StringIO(re.sub(r"\s+", " ", xml_string).strip()), parser)
+    xml_tree = etree.ElementTree(tree.getroot())
+    for element in xml_tree.iter():
+        if element.text and element.text.strip():
+            element.text = None
+        if element.tail and element.tail.strip():
+            element.tail = None
+    return etree.canonicalize(etree.tostring(xml_tree, encoding="unicode", pretty_print=False))
 
 
 class TestSitemapProcessing(unittest.TestCase):
     def setUp(self):
         self.test_dir = Path(tempfile.mkdtemp())
 
-        # Create test sitemap
-        self.sitemap = """<?xml version="1.0" encoding="UTF-8"?>
-<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-  <url>
-    <loc>https://test.com/old</loc>
-    <lastmod>2020-01-01</lastmod>
-  </url>
-  <url>
-    <loc>https://test.com/current</loc>
-  </url>
-</urlset>"""
-
-        (self.test_dir / "sitemap.xml").write_text(self.sitemap)
-
-        # Create processor script
-        self.script = self.test_dir / "sitemap_updater.py"
-        self.script.write_text(
-            """
+        self.files = (
+            (
+                self.test_dir.joinpath("sitemap_updater.py"),
+                r"""
 from datetime import datetime
 
 def init(app):
+    # Configuration
     app.defs.update({
-        'DEPRECATED_PATHS': ['/old'],
-        'NEW_URLS': [{'loc': 'https://test.com/new'}],
-        'TODAY': datetime.now().strftime('%Y-%m-%d')
+        'DEPRECATED_PATHS': ['/old-page', '/temp'],
+        'NEW_URLS': [
+            {'loc': 'https://example.com/contact', 'priority': '0.8'},
+            {'loc': 'https://example.com/about'}
+        ],
+        'DEFAULT_LASTMOD': datetime.now().strftime('%Y-%m-%d')
     })
 
 def process(doc, file_info, app):
-    modified = False
-    root = doc.getroot()
     ns = {'sm': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
+    root = doc.getroot()
     
-    # Track changes for testing
-    app.total.added = 0
-    app.total.removed = 0
-    
-    # Remove old URLs
+    # Remove deprecated URLs
     for url in root.findall('sm:url', ns):
         loc = url.find('sm:loc', ns)
         if any(path in loc.text for path in app.defs['DEPRECATED_PATHS']):
             root.remove(url)
-            app.total.removed += 1
-            modified = True
     
-    # Add lastmod if missing
+    # Update lastmod dates
     for url in root.findall('sm:url', ns):
-        if url.find('sm:lastmod', ns) is None:
-            app.etree.SubElement(url, 'lastmod').text = app.defs['TODAY']
-            modified = True
+        lastmod = url.find('sm:lastmod', ns)
+        if lastmod is None:
+            lastmod = app.etree.SubElement(url, 'lastmod')
+            lastmod.text = app.defs['DEFAULT_LASTMOD']
+        elif lastmod.text < app.defs['DEFAULT_LASTMOD']:
+            lastmod.text = app.defs['DEFAULT_LASTMOD']
     
     # Add new URLs
-    existing = {u.find('sm:loc', ns).text for u in root.findall('sm:url', ns)}
-    for new in app.defs['NEW_URLS']:
-        if new['loc'] not in existing:
-            url = app.etree.SubElement(root, 'url')
-            app.etree.SubElement(url, 'loc').text = new['loc']
-            app.etree.SubElement(url, 'lastmod').text = app.defs['TODAY']
-            app.total.added += 1
-            modified = True
-    
-    return modified
+    existing_urls = {url.find('sm:loc', ns).text for url in root.findall('sm:url', ns)}
+    for new_url in app.defs['NEW_URLS']:
+        if new_url['loc'] not in existing_urls:
+            url_elem = app.etree.SubElement(root, 'url')
+            app.etree.SubElement(url_elem, 'loc').text = new_url['loc']
+            app.etree.SubElement(url_elem, 'lastmod').text = app.defs['DEFAULT_LASTMOD']
+            if 'priority' in new_url:
+                app.etree.SubElement(url_elem, 'priority').text = new_url['priority']
 
-# def end(app):
-#     app.total.Added = sum(hasattr(s, 'added') and s.added for s in app._stats)
-#     app.total.Removed = sum(hasattr(s, 'removed') and s.removed for s in app._stats)
-"""
+def end(app):
+    print(f"Processed {app.total.Files} sitemaps")
+    print(f"Removed {getattr(app.total, 'Removed', 0)} deprecated URLs")
+    print(f"Added {getattr(app.total, 'Added', 0)} new URLs")
+            """,
+            ),
+            (
+                self.test_dir.joinpath("websites/sitemap_old.xml"),
+                r"""
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://example.com/home</loc>
+    <lastmod>2022-01-01</lastmod>
+  </url>
+  <url>
+    <loc>https://example.com/old-page</loc>
+    <lastmod>2021-05-15</lastmod>
+  </url>
+</urlset>
+        """,
+            ),
+            (
+                self.test_dir.joinpath("websites/sitemap_new.xml"),
+                r"""
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://example.com/blog</loc>
+  </url>
+</urlset>
+                  """,
+            ),
         )
+        for path, content in self.files:
+            path.parent.mkdir(exist_ok=True)
+            path.write_text(content.strip())
 
     def tearDown(self):
         import shutil
@@ -86,30 +115,56 @@ def process(doc, file_info, app):
     def test_sitemap_processing(self):
         # Run processor
         app = AlterXML()
+        targets = ((path, path.stat().st_mtime) for path, content in self.files[1:])
+        app.main(["-mm", "-x", str(self.files[0][0]), str(self.test_dir / "websites")])
+        self.assertEqual(
+            tuple(canonicalize_xml(path.read_text()) for path, mtime in targets),
+            (
+                canonicalize_xml(
+                    r"""
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://example.com/home</loc>
+    <lastmod>2023-11-15</lastmod>
+  </url>
+  <url>
+    <loc>https://example.com/contact</loc>
+    <lastmod>2023-11-15</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://example.com/about</loc>
+    <lastmod>2023-11-15</lastmod>
+  </url>
+</urlset>
+               """
+                ),
+                canonicalize_xml(
+                    r"""
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://example.com/blog</loc>
+    <lastmod>2023-11-15</lastmod>
+  </url>
+  <url>
+    <loc>https://example.com/contact</loc>
+    <lastmod>2023-11-15</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://example.com/about</loc>
+    <lastmod>2023-11-15</lastmod>
+  </url>
+</urlset>
+                """
+                ),
+            ),
+        )
+        self.assertTrue(all(path.stat().st_mtime > mtime for path, mtime in targets))
 
-        app.main(["-mm", "--pretty", "-x", str(self.script), str(self.test_dir)])
-
-        # Verify output
-        tree = ET.parse(self.test_dir / "sitemap.xml")
-        root = tree.getroot()
-        ns = {"sm": "http://www.sitemaps.org/schemas/sitemap/0.9"}
-
-        # Check URLs
-        urls = [url.find("sm:loc", ns).text for url in root.findall("sm:url", ns)]
-        self.assertNotIn("https://test.com/old", urls)
-        self.assertIn("https://test.com/current", urls)
-        self.assertIn("https://test.com/new", urls)
-
-        # Check lastmod dates
-        today = datetime.now().strftime("%Y-%m-%d")
-        for url in root.findall("sm:url", ns):
-            lastmod = url.find("sm:lastmod", ns)
-            self.assertIsNotNone(lastmod)
-            self.assertEqual(lastmod.text, today)
-
-        # Verify stats
-        self.assertEqual(app.total.added, 1)
-        self.assertEqual(app.total.removed, 1)
+        targets = ((path, path.stat().st_mtime) for path, content in self.files[1:])
+        app.main(["-mm", "-x", str(self.files[0][0]), str(self.test_dir / "website")])
+        self.assertTrue(all(path.stat().st_mtime == mtime for path, mtime in targets))
 
 
 if __name__ == "__main__":

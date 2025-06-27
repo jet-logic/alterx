@@ -4,54 +4,19 @@ import unittest
 import tempfile
 from pathlib import Path
 from alterx.html import AlterHTML
-import xml.etree.ElementTree as ET
 from lxml import html, etree
 
 
-def canonicalize_html(html_string):
-    # Parse the HTML
-    parsed = html.fromstring(html_string, remove_comments=True, remove_pis=True, compact=True, remove_blank_text=True)
-
-    # Convert to canonical form
-    canonicalized = etree.tostring(parsed, method="html", pretty_print=False, encoding="unicode", with_tail=False)
-
-    return canonicalized
-
-
 def canonicalize_html(html_string, **kwargs):
-    """
-    Convert HTML to canonical XML form.
-
-    Args:
-        html_string: Input HTML string
-        **kwargs: Options for canonicalize() function
-
-    Returns:
-        Canonicalized XML string
-    """
-    html_string = re.sub(r"\s+", " ", html_string).strip()
-    # Parse HTML with lxml's HTML parser
     parser = html.HTMLParser(remove_comments=True, remove_pis=True, compact=True, remove_blank_text=True)
-    tree = html.parse(StringIO(html_string), parser)
-
-    # Convert HTML tree to XML tree
+    tree = html.parse(StringIO(re.sub(r"\s+", " ", html_string).strip()), parser)
     xml_tree = etree.ElementTree(tree.getroot())
     for element in xml_tree.iter():
-        # Strip element's text content
         if element.text and element.text.strip():
             element.text = None
-
-        # Strip element's tail content
         if element.tail and element.tail.strip():
             element.tail = None
     return etree.canonicalize(etree.tostring(xml_tree, encoding="unicode", pretty_print=False))
-    # # Create output buffer
-    # output = StringIO()
-
-    # # Apply XML canonicalization
-    # xml_tree.getroot().getroottree().write_c14n(output, **kwargs)
-
-    # return output.getvalue()
 
 
 class TestHTMLProcessing(unittest.TestCase):
@@ -184,93 +149,19 @@ def end(app):
             path.parent.mkdir(exist_ok=True)
             path.write_text(content.strip())
 
-    #         # Create test HTML file
-    #         self.test_html = """
-    # <!DOCTYPE html>
-    # <html>
-    # <head>
-    #     <title>Test Page</title>
-    # </head>
-    # <body>
-    #     <h2>Test Heading</h2>
-    #     <img src="test.jpg" width="100">
-    # </body>
-    # </html>
-    # """
-    #         (self.test_dir / "test.html").write_text(self.test_html.strip())
-
-    # Create processor script
-
-    #         self.script = self.test_dir / "html_processor.py"
-    #         self.script.write_text(
-    #             """
-    # def init(app):
-    #     app.defs['SITE_NAME'] = 'Test Site'
-
-    # def process(doc, file_info, app):
-    #     modified = False
-    #     root = doc.getroot()
-
-    #     # Head processing
-    #     head = root.find('head')
-    #     if head is not None:
-    #         if not head.xpath('//meta[@charset]'):
-    #             from lxml import html
-    #             meta = html.Element('meta', charset='UTF-8')
-    #             head.insert(0, meta)
-    #             app.total.ImagesFixed += 1
-    #             # modified = True
-
-    #     # Body processing
-    #     body = root.find('body')
-    #     if body is not None:
-    #         # Fix images
-    #         for img in body.xpath('//img[not(@alt)]'):
-    #             img.set('alt', f'location {img.get("src")}')
-    #             app.total.MetaAdded += 1
-    #             # modified = True
-
-    #         # Fix headings
-    #         first_h = next((e for e in body.iter() if e.tag.startswith('h')), None)
-    #         # print('first_h', first_h, first_h.tag)
-    #         if first_h is not None and first_h.tag != 'h1':
-    #             first_h.tag = 'h1'
-    #             # modified = True
-
-    #     # return modified
-    # """
-    #         )
-
     def tearDown(self):
         import shutil
 
         # shutil.rmtree(self.test_dir)
         print(self.test_dir)
 
-    def _test_html_processing(self):
-        # Run processor
-        app = AlterHTML()
-        app.main(["-mm", "--pretty", "-x", str(self.script), "*.html"])
-
-        # Verify output
-        with open(self.test_dir / "test.html") as f:
-            content = f.read()
-            self.assertIn('<meta charset="UTF-8">', content)
-            self.assertIn("<h1>Test Heading</h1>", content)
-            self.assertRegex(content, r'<img\s+src="test.jpg"\s+width="100"\s+alt="location test.jpg"')
-            # self.assertIn('<img src="test.jpg" alt="">', content)
-
-        # Verify stats
-        self.assertEqual(app.total.MetaAdded, 1)
-        self.assertEqual(app.total.ImagesFixed, 1)
-
     def test_html_processing(self):
         # Run processor
         app = AlterHTML()
-        htmls = ((path, path.stat().st_mtime) for path, content in self.files[1:])
+        targets = ((path, path.stat().st_mtime) for path, content in self.files[1:])
         app.main(["-mm", "-x", str(self.files[0][0]), str(self.test_dir / "website")])
         self.assertEqual(
-            tuple(canonicalize_html(path.read_text()) for path, mtime in htmls),
+            tuple(canonicalize_html(path.read_text()) for path, mtime in targets),
             (
                 canonicalize_html(
                     r"""<!DOCTYPE html>
@@ -333,11 +224,11 @@ def end(app):
                 ),
             ),
         )
-        self.assertTrue(all(path.stat().st_mtime > mtime for path, mtime in htmls))
+        self.assertTrue(all(path.stat().st_mtime > mtime for path, mtime in targets))
 
-        htmls = ((path, path.stat().st_mtime) for path, content in self.files[1:])
+        targets = ((path, path.stat().st_mtime) for path, content in self.files[1:])
         app.main(["-mm", "-x", str(self.files[0][0]), str(self.test_dir / "website")])
-        self.assertTrue(all(path.stat().st_mtime == mtime for path, mtime in htmls))
+        self.assertTrue(all(path.stat().st_mtime == mtime for path, mtime in targets))
 
 
 if __name__ == "__main__":

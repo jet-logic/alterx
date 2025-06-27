@@ -58,7 +58,6 @@ def init(app):
     })
 
 def process(doc, stat, app):
-    modified = False
     root = doc.getroot()
 
     # Ensure proper HTML structure
@@ -72,28 +71,24 @@ def process(doc, stat, app):
         if not head.xpath('//meta[@charset]'):
             meta = html.Element('meta', charset='UTF-8')
             head.insert(0, meta)
-            modified = True
 
         # Add missing viewport meta
         if not head.xpath('//meta[@name="viewport"]'):
             meta = html.Element('meta', name='viewport',
                               content='width=device-width, initial-scale=1')
             head.insert(1, meta)
-            modified = True
 
         # Add default description if missing
         if not head.xpath('//meta[@name="description"]'):
             meta = html.Element('meta', name='description',
                               content=app.defs['DEFAULT_META_DESC'])
             head.append(meta)
-            modified = True
 
         # Add canonical link if missing
         if not head.xpath('//link[@rel="canonical"]'):
             link = html.Element('link', rel='canonical',
                               href=f"https://example.com/{stat.path.name}")
             head.append(link)
-            modified = True
 
     # BODY section processing
     body = root.find('body')
@@ -101,7 +96,6 @@ def process(doc, stat, app):
         # Add alt text to images
         for img in body.xpath('//img[not(@alt)]'):
             img.set('alt', '')
-            modified = True
 
         # Convert width/height attributes to CSS
         for img in body.xpath('//img[@width or @height]'):
@@ -113,13 +107,11 @@ def process(doc, stat, app):
                 style += f"height: {img.get('height')}px;"
                 del img.attrib['height']
             img.set('style', style)
-            modified = True
 
         # Standardize heading hierarchy
         first_h = next((e for e in body.iter() if e.tag in ('h1','h2','h3','h4','h5','h6')), None)
         if first_h and first_h.tag != 'h1':
             first_h.tag = 'h1'
-            modified = True
 
         # Inject analytics before closing body
         if not body.xpath('//script[contains(text(), "GoogleAnalytics")]'):
@@ -130,9 +122,6 @@ def process(doc, stat, app):
                 ga('send', 'pageview');
             """
             body.append(script)
-            modified = True
-
-    return modified
 
 def end(app):
     print(f"Optimized {app.total.Altered}/{app.total.Files} HTML files")
