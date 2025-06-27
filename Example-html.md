@@ -144,10 +144,10 @@ def end(app):
 
 ```bash
 # With HTML pretty printing
-python -m alterx.html -m --pretty -x html_optimizer.py website/*.html
+python -m alterx.html -mm -x html_optimizer.py website
 
 # Alternative with more aggressive HTML cleaning
-python -m alterx.html -m --strip-comments --strip-pis -x html_optimizer.py website/*.html
+python -m alterx.html -mm --strip-comments --strip-pis -x html_optimizer.py website
 ```
 
 ### 4. Expected Output Files
