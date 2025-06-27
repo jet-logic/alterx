@@ -1,3 +1,6 @@
+from contextlib import redirect_stdout
+from subprocess import run
+from sys import stderr
 import unittest
 import re
 import tempfile
@@ -30,7 +33,7 @@ class TestSitemapProcessing(unittest.TestCase):
                 self.test_dir.joinpath("sitemap_updater.py"),
                 r"""
 from datetime import datetime
-
+from sys import stderr
 def init(app):
     # Configuration
     app.defs.update({
@@ -72,9 +75,9 @@ def process(doc, file_info, app):
                 app.etree.SubElement(url_elem, 'priority').text = new_url['priority']
 
 def end(app):
-    print(f"Processed {app.total.Files} sitemaps")
-    print(f"Removed {getattr(app.total, 'Removed', 0)} deprecated URLs")
-    print(f"Added {getattr(app.total, 'Added', 0)} new URLs")
+    print(f"Processed {app.total.Files} sitemaps", file=stderr)
+    print(f"Removed {getattr(app.total, 'Removed', 0)} deprecated URLs", file=stderr)
+    print(f"Added {getattr(app.total, 'Added', 0)} new URLs", file=stderr)
             """,
             ),
             (
@@ -114,9 +117,8 @@ def end(app):
 
     def test_sitemap_processing(self):
         # Run processor
-        app = AlterXML()
         targets = ((path, path.stat().st_mtime) for path, content in self.files[1:])
-        app.main(["-mm", "-x", str(self.files[0][0]), str(self.test_dir / "websites")])
+        AlterXML().main(["-mm", "-x", str(self.files[0][0]), str(self.test_dir / "websites")])
         self.assertEqual(
             tuple(canonicalize_xml(path.read_text()) for path, mtime in targets),
             (
@@ -162,9 +164,68 @@ def end(app):
         )
         self.assertTrue(all(path.stat().st_mtime > mtime for path, mtime in targets))
 
+        # should be not modified
         targets = ((path, path.stat().st_mtime) for path, content in self.files[1:])
-        app.main(["-mm", "-x", str(self.files[0][0]), str(self.test_dir / "website")])
+        AlterXML().main(["-mm", "-x", str(self.files[0][0]), str(self.test_dir / "websites")])
         self.assertTrue(all(path.stat().st_mtime == mtime for path, mtime in targets))
+
+    def exec(self, args, **kwargs):
+        print("RUN", args, file=stderr)
+        result = run([str(x) for x in args], **kwargs)
+        # o = result.stdout + result.stderr
+        # print(o)
+        # return o
+
+    def test_sink(self):
+        out = self.test_dir / "out"
+        with out.open("w") as f:
+            with redirect_stdout(f):
+                AlterXML().main(["-mm", "-x", str(self.files[0][0]), "-o", "-", str(self.files[1][0])])
+        self.exec(["cat", out])
+
+        self.assertEqual(
+            canonicalize_xml(out.read_text()),
+            canonicalize_xml(
+                r"""
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://example.com/home</loc>
+    <lastmod>2023-11-15</lastmod>
+  </url>
+  <url>
+    <loc>https://example.com/contact</loc>
+    <lastmod>2023-11-15</lastmod>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://example.com/about</loc>
+    <lastmod>2023-11-15</lastmod>
+  </url>
+</urlset>
+               """
+            ),
+        )
+
+
+#     def test_sink(self):
+#         path = self.test_dir.joinpath("urls.py")
+#         path.write_text(
+#             r"""
+# def process(doc, file_info, app):
+#     ns = {'sm': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
+#     root = doc.getroot()
+#     # Remove deprecated URLs
+#     for url in root.findall('sm:url', ns):
+#         for loc in url.findall('sm:loc', ns):
+#             print(loc.text)
+# """
+#         )
+#         out = self.test_dir / "out"
+#         AlterXML().main(["-m", "-x", str(path), "-o", str(out), str(self.test_dir / "websites")])
+#         self.assertSetEqual(
+#             set(out.read_text().strip().splitlines()),
+#             set(["https://example.com/home", "https://example.com/old-page", "https://example.com/blog"]),
+#         )
 
 
 if __name__ == "__main__":

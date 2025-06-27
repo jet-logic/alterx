@@ -18,6 +18,12 @@ AlterX is a powerful command-line tool for batch processing and transforming fil
 - **Dry run mode**: Test changes before applying them
 - **Comprehensive logging**: Detailed output about modifications
 
+## ☕ Support
+
+If you find this project helpful, consider supporting me:
+
+[![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/B0B01E8SY7)
+
 ## Installation
 
 ```bash
@@ -47,8 +53,8 @@ alterx json -x transform.py path/to/files
 
 ### Example Use Cases Shown
 
-- [HTML](Example-html.md) Standardizing HTML documents (adding missing tags, accessibility improvements)
 - [JSON](Example-json.md) Updating API URLs across multiple JSON config files
 - [TOML](Example-toml.md) Maintaining consistent Python project TOML files
+- [HTML](Example-html.md) Standardizing HTML documents (adding missing tags, accessibility improvements)
 - [XML](Example-xml.md) Processing XML sitemaps (adding/removing URLs, updating dates)
 - [YAML](Example-yaml.md) Managing Kubernetes YAML manifests (adding labels, updating image tags)

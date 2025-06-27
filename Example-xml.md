@@ -89,11 +89,12 @@ def end(app):
 ### 3. Run the Processor
 
 ```bash
+# Using the `-mm` flag, write only if modified
 # With pretty printing and XML declaration
-python -m alterx.xml -m --pretty --xml-declaration -x sitemap_updater.py websites
+python -m alterx.xml -mm --pretty --xml-declaration -x sitemap_updater.py websites
 
 # Alternative with lxml for better formatting
-python -m alterx.xml -m --pretty --ns-clean -x sitemap_updater.py websites
+python -m alterx.xml -mm --pretty --ns-clean -x sitemap_updater.py websites
 ```
 
 ### 4. Expected Output Files
