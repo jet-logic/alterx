@@ -15,19 +15,23 @@ class TestK8sYAMLProcessing(unittest.TestCase):
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-    name: test-app
+  name: webapp
 spec:
-    template:
-        spec:
-            containers:
-            - name: app
-              image: test/app:1.0.0
+  replicas: 3
+  template:
+    spec:
+      containers:
+      - name: web
+        image: myrepo/webapp:1.2.3
 """,
             "service.yaml": r"""
 apiVersion: v1
 kind: Service
 metadata:
-    name: test-app
+  name: webapp
+spec:
+  ports:
+  - port: 80
 """,
         }
 
@@ -37,32 +41,42 @@ metadata:
         # Create processor script
         self.script = self.test_dir / "k8s_updater.py"
         self.script.write_text(
-            """
+            r"""
 def init(app):
+    # Configuration parameters
     app.defs.update({
-        'ENVIRONMENT': 'staging',
-        'IMAGE_TAG': '2.0.0'
+        'ENVIRONMENT': 'production',
+        'IMAGE_TAG': '1.3.0',
+        'RESOURCE_LIMITS': {
+            'cpu': '500m',
+            'memory': '512Mi'
+        }
     })
 
-def process(doc, file_info, app):
-    modified = False
-    
-    # Add labels
-    if 'metadata' in doc:
+def process(doc, stat, app):
+
+    # Add standard labels
+    if 'metadata' in doc and 'labels' not in doc['metadata']:
         doc['metadata']['labels'] = {
-            'env': app.defs['ENVIRONMENT'],
-            'processed': 'true'
+            'app.kubernetes.io/env': app.defs['ENVIRONMENT'],
+            'app.kubernetes.io/managed-by': 'alterx'
         }
-        # modified = True
-    
-    # Update image tags
+
+    # Update container images
     if doc.get('kind') == 'Deployment':
         for container in doc['spec']['template']['spec'].get('containers', []):
-            if not container['image'].endswith(app.defs['IMAGE_TAG']):
-                container['image'] = container['image'].rsplit(':', 1)[0] + ':' + app.defs['IMAGE_TAG']
-                # modified = True
-    
-    return modified
+            if container['name'] == 'web':
+                if not container['image'].endswith(app.defs['IMAGE_TAG']):
+                    container['image'] = container['image'].rsplit(':', 1)[0] + ':' + app.defs['IMAGE_TAG']
+
+                # Add resource limits if missing
+                if 'resources' not in container:
+                    container['resources'] = {'limits': app.defs['RESOURCE_LIMITS']}
+
+
+def end(app):
+    print(f"Processed {app.total.Files} Kubernetes manifests")
+    print(f"Updated {app.total.Altered} files")
             """
         )
 
@@ -81,15 +95,53 @@ def process(doc, file_info, app):
         service = yaml.safe_load((self.test_dir / "service.yaml").read_text())
 
         # Check labels
-        self.assertEqual(deployment["metadata"]["labels"]["env"], "staging")
-        self.assertEqual(service["metadata"]["labels"]["env"], "staging")
+        # self.assertEqual(deployment["metadata"]["labels"]["env"], "staging")
+        # self.assertEqual(service["metadata"]["labels"]["env"], "staging")
 
         # Check image tag
-        self.assertTrue(deployment["spec"]["template"]["spec"]["containers"][0]["image"].endswith(":2.0.0"))
+        # self.assertTrue(deployment["spec"]["template"]["spec"]["containers"][0]["image"].endswith(":2.0.0"))
 
         # Verify unchanged parts remain
-        self.assertEqual(deployment["metadata"]["name"], "test-app")
-        self.assertEqual(service.get("spec"), None)
+        # self.assertEqual(deployment["metadata"]["name"], "test-app")
+        # self.assertEqual(service.get("spec"), None)
+
+        self.assertDictEqual(
+            service,
+            {
+                "apiVersion": "v1",
+                "kind": "Service",
+                "metadata": {
+                    "name": "webapp",
+                    "labels": {"app.kubernetes.io/env": "production", "app.kubernetes.io/managed-by": "alterx"},
+                },
+                "spec": {"ports": [{"port": 80}]},
+            },
+        )
+        self.assertDictEqual(
+            deployment,
+            {
+                "apiVersion": "apps/v1",
+                "kind": "Deployment",
+                "metadata": {
+                    "name": "webapp",
+                    "labels": {"app.kubernetes.io/env": "production", "app.kubernetes.io/managed-by": "alterx"},
+                },
+                "spec": {
+                    "replicas": 3,
+                    "template": {
+                        "spec": {
+                            "containers": [
+                                {
+                                    "name": "web",
+                                    "image": "myrepo/webapp:1.3.0",
+                                    "resources": {"limits": {"cpu": "500m", "memory": "512Mi"}},
+                                }
+                            ]
+                        }
+                    },
+                },
+            },
+        )
 
     def test_idempotency(self):
         # First run should modify both files
