@@ -6,6 +6,37 @@ Let's say we have a directory of JSON configuration files that need:
 2. All "debug" flags set to `false`
 3. A new "version" field added
 
+### Usage of `alterx.json`
+
+```bash
+usage: python3 -m alterx.json [-h] [--depth-first] [--follow-symlinks] [--exclude GLOB] [--include GLOB] [--sizes min..max]
+                              [--depth min..max] [--paths-from FILE] [-m] [-d NAME=VALUE] [-x SCRIPT] [-o FILE] [--encoding USE_ENCODING]
+                              [-n]
+                              [PATH ...]
+
+positional arguments:
+  PATH
+
+options:
+  -h, --help            show this help message and exit
+  -m                    Modify flag
+  -d NAME=VALUE         Define some variable
+  -x SCRIPT             Extension script
+  -o FILE               Output to FILE
+  --encoding USE_ENCODING
+                        Encoding to use when saving
+  -n                    No modifiaction will happend
+
+Traversal:
+  --depth-first         Process each directory's contents before the directory itself
+  --follow-symlinks     Follow symbolic links
+  --exclude GLOB        exclude matching GLOB
+  --include GLOB        include matching GLOB
+  --sizes min..max      Filter sizes: 1k.., 4g, ..2mb
+  --depth min..max      Check for depth: 2.., 4, ..3
+  --paths-from FILE     read list of source-file names from FILE
+```
+
 ### Step 1: Create Sample JSON Files
 
 ```bash

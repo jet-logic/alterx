@@ -169,20 +169,11 @@ def end(app):
         AlterXML().main(["-mm", "-x", str(self.files[0][0]), str(self.test_dir / "websites")])
         self.assertTrue(all(path.stat().st_mtime == mtime for path, mtime in targets))
 
-    def exec(self, args, **kwargs):
-        print("RUN", args, file=stderr)
-        result = run([str(x) for x in args], **kwargs)
-        # o = result.stdout + result.stderr
-        # print(o)
-        # return o
-
     def test_sink(self):
         out = self.test_dir / "out"
         with out.open("w") as f:
             with redirect_stdout(f):
                 AlterXML().main(["-mm", "-x", str(self.files[0][0]), "-o", "-", str(self.files[1][0])])
-        self.exec(["cat", out])
-
         self.assertEqual(
             canonicalize_xml(out.read_text()),
             canonicalize_xml(
@@ -205,27 +196,6 @@ def end(app):
                """
             ),
         )
-
-
-#     def test_sink(self):
-#         path = self.test_dir.joinpath("urls.py")
-#         path.write_text(
-#             r"""
-# def process(doc, file_info, app):
-#     ns = {'sm': 'http://www.sitemaps.org/schemas/sitemap/0.9'}
-#     root = doc.getroot()
-#     # Remove deprecated URLs
-#     for url in root.findall('sm:url', ns):
-#         for loc in url.findall('sm:loc', ns):
-#             print(loc.text)
-# """
-#         )
-#         out = self.test_dir / "out"
-#         AlterXML().main(["-m", "-x", str(path), "-o", str(out), str(self.test_dir / "websites")])
-#         self.assertSetEqual(
-#             set(out.read_text().strip().splitlines()),
-#             set(["https://example.com/home", "https://example.com/old-page", "https://example.com/blog"]),
-#         )
 
 
 if __name__ == "__main__":

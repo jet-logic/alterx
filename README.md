@@ -4,7 +4,7 @@
 <!-- [![License](https://img.shields.io/badge/license-MIT-green.svg)](LICENSE) -->
 
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
-[![Tests Status](https://github.com/jet-logic/alterx/actions/workflows/tests.yml/badge.svg)](https://github.com/jet-logic/alterx/actions)
+[![Tests Status](https://github.com/jet-logic/alterx/actions/workflows/build.yml/badge.svg)](https://github.com/jet-logic/alterx/actions)
 [![PyPI version fury.io](https://badge.fury.io/py/alterx.svg)](https://pypi.python.org/pypi/alterx/)
 
 AlterX is a powerful command-line tool for batch processing and transforming files in various formats. It provides a consistent framework for modifying HTML, JSON, TOML, XML, and YAML files with custom Python logic.

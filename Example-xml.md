@@ -7,6 +7,47 @@ We'll process sitemap.xml files to:
 3. Add new pages
 4. Standardize formatting
 
+### Usage of `alterx.xml`
+
+```bash
+usage: python3 -m alterx.xml [-h] [--depth-first] [--follow-symlinks] [--exclude GLOB] [--include GLOB] [--sizes min..max]
+                             [--depth min..max] [--paths-from FILE] [--pretty | --no-pretty] [--ns-clean] [--recover] [--strip-ws]
+                             [--strip-comments] [--strip-pi] [--xml-declaration | --no-xml-declaration] [-m] [-d NAME=VALUE] [-x SCRIPT]
+                             [-o FILE] [--encoding USE_ENCODING] [-n]
+                             [PATH ...]
+
+positional arguments:
+  PATH
+
+options:
+  -h, --help            show this help message and exit
+  --pretty, --no-pretty
+                        Save pretty formated
+  --ns-clean            Try to clean up redundant namespace declarations
+  --recover             Try hard to parse through broken XML
+  --strip-ws            Discard blank text nodes between tags
+  --strip-comments      Discard comments
+  --strip-pi            Discard processing instructions
+  --xml-declaration, --no-xml-declaration
+                        Add xml declaration
+  -m                    Modify flag
+  -d NAME=VALUE         Define some variable
+  -x SCRIPT             Extension script
+  -o FILE               Output to FILE
+  --encoding USE_ENCODING
+                        Encoding to use when saving
+  -n                    No modifiaction will happend
+
+Traversal:
+  --depth-first         Process each directory's contents before the directory itself
+  --follow-symlinks     Follow symbolic links
+  --exclude GLOB        exclude matching GLOB
+  --include GLOB        include matching GLOB
+  --sizes min..max      Filter sizes: 1k.., 4g, ..2mb
+  --depth min..max      Check for depth: 2.., 4, ..3
+  --paths-from FILE     read list of source-file names from FILE
+```
+
 ---
 
 ### 1. Create Sample XML Files

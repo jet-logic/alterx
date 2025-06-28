@@ -46,6 +46,11 @@ class App(FindSkel):
 
         self.on_check_accept(check)
 
+    def init_argparse(self, argp):
+
+        argp.prog = f"python3 -m {self.__class__.__module__}"
+        return super().init_argparse(argp)
+
     def ready(self) -> None:
         if not self._glob_includes:
             from re import compile
